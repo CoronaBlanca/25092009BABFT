@@ -25,21 +25,17 @@ getgenv().Silent = false
 -- ==============================
 -- 📌 ANTI AFK
 -- ==============================
-farmTab:AddToggle({
-    text = "Anti AFK",
-    flag = "anti_afk",
-    callback = function(state)
-        getgenv().afk6464 = state
-        if state then
-            player.Idled:Connect(function()
-                if getgenv().afk6464 then
-                    VirtualUser:CaptureController()
-                    VirtualUser:ClickButton2(Vector2.new())
-                end
-            end)
-        end
+farmTab:AddSwitch("Anti AFK", false, function(state)
+    getgenv().afk6464 = state
+    if state then
+        player.Idled:Connect(function()
+            if getgenv().afk6464 then
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+            end
+        end)
     end
-})
+end)
 
 -- ==============================
 -- 📌 AUTO FARM
@@ -53,7 +49,6 @@ local function AutoFarmFunction()
     for i = 1, 10 do
         if not getgenv().AF then break end
 
-        -- Determinar posición
         local targetCFrame
         if getgenv().Silent then
             if i == 1 then
@@ -77,7 +72,6 @@ local function AutoFarmFunction()
 
         humanoidRootPart.CFrame = targetCFrame
 
-        -- Esperar a que el stage anterior se complete
         if i ~= 1 then
             repeat task.wait() until #tostring(player.OtherData:FindFirstChild("Stage"..(i-1)).Value) > 2
         else
@@ -88,7 +82,6 @@ local function AutoFarmFunction()
             Workspace.ClaimRiverResultsGold:FireServer()
         end
 
-        -- Reinicio si llegamos al final
         if i == 10 then
             if Lighting.OutdoorAmbient == Color3.fromRGB(200, 200, 200) or Lighting.OutdoorAmbient == Color3.fromRGB(255, 255, 255) then
                 task.wait(0.1)
@@ -100,30 +93,23 @@ local function AutoFarmFunction()
     end
 end
 
-farmTab:AddToggle({
-    text = "Auto Farm",
-    flag = "auto_farm",
-    callback = function(state)
-        getgenv().AF = state
-        if state then
-            if player.Character then player.Character:BreakJoints() end
-            player.CharacterAdded:Connect(function()
-                if getgenv().AF then
-                    task.wait(1)
-                    AutoFarmFunction()
-                end
-            end)
-        end
+farmTab:AddSwitch("Auto Farm", false, function(state)
+    getgenv().AF = state
+    if state then
+        if player.Character then player.Character:BreakJoints() end
+        player.CharacterAdded:Connect(function()
+            if getgenv().AF then
+                task.wait(1)
+                AutoFarmFunction()
+            end
+        end)
     end
-})
+end)
 
 -- ==============================
 -- 📌 MAKE IT SILENT
 -- ==============================
-farmTab:AddToggle({
-    text = "Make it Silent",
-    flag = "silent",
-    callback = function(state)
-        getgenv().Silent = state
-    end
-})
+farmTab:AddSwitch("Make it Silent", false, function(state)
+    getgenv().Silent = state
+end)
+
