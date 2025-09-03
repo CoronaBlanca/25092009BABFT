@@ -1,7 +1,7 @@
-local buttonNames = {"Elerium V5", "FLUENT UI", "Dr Ray", "Packs Farm"}
+local buttonNames = {"Elerium V5", "FLUENT UI", "Dr Ray", "My GUI"}
 local scripts = {
     [1] = [[
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/CoronaBlanca/25092009ML/refs/heads/main/Elerium-V5"))()("Sherya Scripts: Script 1 ejecutado")
+        loadstring(game:HttpGet('https://raw.githubusercontent.com/CoronaBlanca/25092009BABFT/refs/heads/main/Elerium%20V5'))()("Sherya Scripts: Script 1 ejecutado")
     ]],
     [2] = [[
         loadstring(game:HttpGet("https://raw.githubusercontent.com/CoronaBlanca/25092009ML/refs/heads/main/FLUENT"))()("Sherya Scripts: Script 2 ejecutado")
