@@ -1,115 +1,220 @@
+-- Cargar librería Elerium V5
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Sherya-Script-Private/Elerium-V5/refs/heads/main/Library", true))()
-
--- Crear la ventana principal
-local win = library:AddWindow("Sherya Script | Galaxy Hub", {
+local win = library:AddWindow("Sherya Script | BABFT", {
     main_color = Color3.fromRGB(75, 0, 130),
-    min_size = Vector2.new(500, 800),
-    can_resize = true,
+    min_size = Vector2.new(500, 400),
+    toggle_key = Enum.KeyCode.RightControl,
+    can_resize = true
 })
 
--- Crear la pestaña Auto Farm
-local farmTab = win:AddTab("Auto Farm")
+-- Tabs
+local farmTab = win:AddTab("AutoFarm")
+local statsTab = win:AddTab("Stats")
+local webhookTab = win:AddTab("Webhook")
 
--- 📌 VARIABLES GLOBALES
+-- Services
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-local VirtualUser = game:GetService("VirtualUser")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
-local Workspace = game:GetService("Workspace")
+local HttpService = game:GetService("HttpService")
+local VirtualUser = game:GetService("VirtualUser")
 
-getgenv().afk6464 = false
+-- Variables
 getgenv().AF = false
-getgenv().Silent = false
+getgenv().WBhook = false
+getgenv().afk6464 = false
+local FcMaster = true
+local connection
+local clockTime = 0
+local running = false
+local totalGoldGained, totalGoldBlock, Ftime, GoldPerHour = 0, 0, 0, 0
+local lastGoldValue = Players.LocalPlayer.Data.Gold.Value
+local IGBLOCK = Players.LocalPlayer.Data.GoldBlock.Value
+local WebHook = ""
+local interval = 1800
 
--- ==============================
--- 📌 ANTI AFK
--- ==============================
-farmTab:AddSwitch("Anti AFK", false, function(state)
-    getgenv().afk6464 = state
-    if state then
-        player.Idled:Connect(function()
+--------------------------------
+-- Anti AFK
+--------------------------------
+local function enableAntiAFK()
+    if not connection then
+        connection = player.Idled:Connect(function()
             if getgenv().afk6464 then
                 VirtualUser:CaptureController()
                 VirtualUser:ClickButton2(Vector2.new())
             end
         end)
     end
-end)
+end
 
--- ==============================
--- 📌 AUTO FARM
--- ==============================
-local TriggerChest = Workspace.BoatStages.NormalStages.TheEnd.GoldenChest.Trigger
-
-local function AutoFarmFunction()
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-
-    for i = 1, 10 do
-        if not getgenv().AF then break end
-
-        local targetCFrame
-        if getgenv().Silent then
-            if i == 1 then
-                targetCFrame = CFrame.new(160.161, 29.595, 973.813)
-            else
-                targetCFrame = CFrame.new(70.024, 138.902, 1371.634 + (i-2)*770)
-            end
-        else
-            if i == 1 then
-                targetCFrame = CFrame.new(160.161, 29.595, 973.813)
-            elseif i == 5 then
-                TriggerChest.CFrame = CFrame.new(-51, 65, 984 + 4*770)
-                task.delay(0.8, function()
-                    Workspace.ClaimRiverResultsGold:FireServer()
-                end)
-                targetCFrame = CFrame.new(-51, 65, 984 + (i-1)*770)
-            else
-                targetCFrame = CFrame.new(-51, 65, 984 + (i-1)*770)
-            end
-        end
-
-        humanoidRootPart.CFrame = targetCFrame
-
-        if i ~= 1 then
-            repeat task.wait() until #tostring(player.OtherData:FindFirstChild("Stage"..(i-1)).Value) > 2
-        else
-            task.wait(2.3)
-        end
-
-        if i ~= 4 then
-            Workspace.ClaimRiverResultsGold:FireServer()
-        end
-
-        if i == 10 then
-            if Lighting.OutdoorAmbient == Color3.fromRGB(200, 200, 200) or Lighting.OutdoorAmbient == Color3.fromRGB(255, 255, 255) then
-                task.wait(0.1)
-                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character.HumanoidRootPart.Position.Z > 7529 then
-                    player.Character:BreakJoints()
-                end
-            end
-        end
+local function disableAntiAFK()
+    if connection then
+        connection:Disconnect()
+        connection = nil
     end
 end
 
-farmTab:AddSwitch("Auto Farm", false, function(state)
-    getgenv().AF = state
-    if state then
-        if player.Character then player.Character:BreakJoints() end
-        player.CharacterAdded:Connect(function()
-            if getgenv().AF then
-                task.wait(1)
-                AutoFarmFunction()
-            end
-        end)
+farmTab:AddSwitch("Anti AFK", function(v)
+    getgenv().afk6464 = v
+    if v then
+        enableAntiAFK()
+    else
+        disableAntiAFK()
     end
 end)
 
--- ==============================
--- 📌 MAKE IT SILENT
--- ==============================
-farmTab:AddSwitch("Make it Silent", false, function(state)
-    getgenv().Silent = state
+--------------------------------
+-- AutoFarm (tu lógica adaptada)
+--------------------------------
+local Silent = false
+local TriggerChest = workspace.BoatStages.NormalStages.TheEnd.GoldenChest.Trigger
+
+local function startAutoFarm()
+    if not getgenv().AF then return end
+
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+    local newPart = Instance.new("Part")
+    newPart.Size = Vector3.new(5, 1, 5)
+    newPart.Transparency = 1
+    newPart.Anchored = true
+    newPart.CanCollide = true
+    newPart.Parent = workspace
+
+    local decal = Instance.new("Decal")
+    decal.Texture = "rbxassetid://139953968294114"
+    decal.Face = Enum.NormalId.Top 
+    decal.Parent = newPart
+
+    local function TPAF(iteration)
+        if not getgenv().AF then return end
+        if iteration == 5 then
+            TriggerChest.CFrame = CFrame.new(-51, 65, 984 + 4 * 770)
+            task.delay(0.8, function()
+                workspace.ClaimRiverResultsGold:FireServer()
+            end)
+            humanoidRootPart.CFrame = CFrame.new(-51, 65, 984 + (iteration - 1) * 770)
+        else
+            if iteration == 1 then
+                humanoidRootPart.CFrame = CFrame.new(160.161, 29.596, 973.814)
+            else
+                humanoidRootPart.CFrame = CFrame.new(-51, 65, 984 + (iteration - 1) * 770)
+            end
+        end
+        newPart.Position = humanoidRootPart.Position - Vector3.new(0, 2, 0)
+    end
+
+    for i = 1, 10 do
+        if not getgenv().AF then break end
+        TPAF(i)
+    end
+    newPart:Destroy()
+end
+
+farmTab:AddSwitch("Enable AutoFarm", function(v)
+    getgenv().AF = v
+    if v then
+        startAutoFarm()
+    end
 end)
 
+--------------------------------
+-- Stats
+--------------------------------
+local function formatTime(seconds)
+    local h = math.floor(seconds / 3600)
+    local m = math.floor((seconds % 3600) / 60)
+    local s = seconds % 60
+    return string.format("%02d:%02d:%02d", h, m, s)
+end
+
+local timeLabel = statsTab:AddLabel("⏳ Tiempo: 00:00:00")
+local goldLabel = statsTab:AddLabel("💰 Oro ganado: 0")
+local blockLabel = statsTab:AddLabel("🟨 Bloques de oro: 0")
+local gphLabel = statsTab:AddLabel("⚡ Oro/Hora: 0")
+
+local function updateStats()
+    local FinalGold = Players.LocalPlayer.Data.Gold.Value
+    Ftime = formatTime(clockTime)
+    local GoldGained = FinalGold - lastGoldValue
+    totalGoldGained = totalGoldGained + GoldGained
+    local FGBLOCK = Players.LocalPlayer.Data.GoldBlock.Value
+    totalGoldBlock = FGBLOCK - IGBLOCK
+    GoldPerHour = (totalGoldGained / math.max(1, clockTime)) * 3600
+
+    timeLabel:Set("⏳ Tiempo: " .. Ftime)
+    goldLabel:Set("💰 Oro ganado: " .. totalGoldGained)
+    blockLabel:Set("🟨 Bloques de oro: " .. totalGoldBlock)
+    gphLabel:Set("⚡ Oro/Hora: " .. math.floor(GoldPerHour))
+
+    lastGoldValue = FinalGold
+end
+
+task.spawn(function()
+    while FcMaster do
+        if getgenv().AF then
+            clockTime += 1
+            updateStats()
+        end
+        task.wait(1)
+    end
+end)
+
+--------------------------------
+-- Webhook
+--------------------------------
+local function SendMessageEMBED(url, embed)
+    local headers = {["Content-Type"] = "application/json"}
+    local data = {["embeds"] = {embed}}
+    local body = HttpService:JSONEncode(data)
+
+    request({
+        Url = url,
+        Method = "POST",
+        Headers = headers,
+        Body = body
+    })
+end
+
+local function SendAUTOFARMInfo()
+    local embed = {
+        ["title"] = "BABFT - Auto Farm",
+        ["description"] = "📊 Estadísticas",
+        ["color"] = 16777215,
+        ["fields"] = {
+            {["name"] = "Tiempo", ["value"] = Ftime},
+            {["name"] = "Bloques de oro", ["value"] = tostring(totalGoldBlock)},
+            {["name"] = "Oro ganado", ["value"] = tostring(totalGoldGained)},
+            {["name"] = "Oro/Hora", ["value"] = tostring(math.floor(GoldPerHour))},
+            {["name"] = "Oro total", ["value"] = tostring(Players.LocalPlayer.Data.Gold.Value)},
+        },
+        ["footer"] = {["text"] = "Script by @thereal_asu"}
+    }
+    if WebHook ~= "" then
+        SendMessageEMBED(WebHook, embed)
+    end
+end
+
+webhookTab:AddBox("Webhook URL", function(v)
+    WebHook = v
+end)
+
+webhookTab:AddSlider("Intervalo (seg)", function(v)
+    interval = v
+end, {min = 60, max = 3600, default = 1800})
+
+webhookTab:AddSwitch("Activar Webhook", function(v)
+    getgenv().WBhook = v
+end)
+
+task.spawn(function()
+    while true do
+        if getgenv().WBhook and getgenv().AF then
+            SendAUTOFARMInfo()
+            task.wait(interval)
+        end
+        task.wait(1)
+    end
+end)
